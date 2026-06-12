@@ -6,11 +6,11 @@ services:
     container_name: speakarn-whisper
     env_file: .env
     ports:
-      - "${WHISPER_PORT:-8484}:8080"
+      - "${WHISPER_PORT:-8080}:8080"
     volumes:
       - ./models:/models
     networks:
-      - speakarn-network
+      - whisper-network
     restart: unless-stopped
     command: >
       whisper-server
@@ -26,6 +26,6 @@ services:
       start_period: 60s
 
 networks:
-  speakarn-network:
-    external: true
-    name: postgres-docker_postgres-16-net
+  whisper-network:
+    name: whisper-network
+    driver: bridge
