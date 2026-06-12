@@ -12,12 +12,15 @@ services:
     networks:
       - whisper-network
     restart: unless-stopped
-    command: >
-      whisper-server
-      --host=0.0.0.0
-      --port=8080
-      -m /models/ggml-small.en.bin
-      --convert
+    entrypoint:
+      - whisper-server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - -m
+      - /models/ggml-small.en.bin
+      - --convert
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
