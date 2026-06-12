@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  whisper:
+    image: ghcr.io/ggml-org/whisper.cpp:main
+    container_name: speakarn-whisper
+    env_file: .env
+    ports:
+      - "${WHISPER_PORT:-8484}:8080"
+    volumes:
+      - ./models:/models
+    networks:
+      - speakarn-network
+    restart: unless-stopped
+    command: >
+      whisper-server
+      --host 0.0.0.0
+      --port 8080
+      -m /models/ggml-small.en.bin
+      --convert
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  speakarn-network:
+    external: true
+    name: postgres-docker_postgres-16-net
