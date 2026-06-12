@@ -1,4 +1,4 @@
-# Whisper.cpp Server for Speakarn
+# Whisper.cpp Server for Speech to Text
 
 Self-hosted Speech-to-Text (STT) server using [ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp) official Docker image.
 
@@ -6,7 +6,7 @@ Self-hosted Speech-to-Text (STT) server using [ggml-org/whisper.cpp](https://git
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Speakarn   │────→│  whisper    │────→│  whisper.cpp│
+│  Client     │────→│  whisper    │────→│  whisper.cpp│
 │  Backend    │     │  -network   │     │  Server     │
 └─────────────┘     └─────────────┘     └─────────────┘
        │                                           │
@@ -15,14 +15,14 @@ Self-hosted Speech-to-Text (STT) server using [ggml-org/whisper.cpp](https://git
 ```
 
 - **Network**: `whisper-network` (isolated Docker bridge network)
-- **Container**: `speakarn-whisper`
+- **Container**: `whisper-speech-to-text`
 - **Port**: 8080 (configurable via `.env`)
 - **Model**: `small.en` (English-optimized, ~466MB)
 
 ## Why Separate Network?
 
 - **Isolation**: Whisper server is independent from backend lifecycle
-- **Reusability**: Other services can connect to `whisper-network` without depending on `speakarn-network`
+- **Reusability**: Other services can connect to `whisper-network`
 - **Scalability**: Can run whisper on a different machine and join the network overlay
 - **Portability**: Whisper container can be moved/restarted without affecting backend
 
@@ -80,12 +80,12 @@ WHISPER_PORT=8080
 Backend connects via Docker network (no exposed port needed):
 ```bash
 # From backend container
-curl http://speakarn-whisper:8080/inference
+curl http://whisper-speech-to-text:8080/inference
 ```
 
 Backend `.env`:
 ```bash
-WHISPER_ENDPOINT=http://speakarn-whisper:8080
+WHISPER_ENDPOINT=http://whisper-speech-to-text:8080
 WHISPER_MODEL=small.en
 ```
 
@@ -110,7 +110,7 @@ WHISPER_MODEL=small.en
 Change model in `docker-compose.yml`:
 ```yaml
 command: >
-  whisper-server
+  whisper-speech-to-text
   -m /models/ggml-base.en.bin  # <-- change here
 ```
 
@@ -126,12 +126,6 @@ ls -la models/
 ### Out of memory
 - Use smaller model: `ggml-base.en.bin` or `ggml-tiny.en.bin`
 - Reduce container memory limit
-
-### Backend can't connect
-```bash
-# Test from backend container
-docker exec speakarn-backend wget -O- http://speakarn-whisper:8080/health
-```
 
 ## Resources
 

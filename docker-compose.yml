@@ -3,7 +3,7 @@ version: '3.8'
 services:
   whisper:
     image: ghcr.io/ggml-org/whisper.cpp:main
-    container_name: speakarn-whisper
+    container_name: whisper-speech-to-text
     env_file: .env
     ports:
       - "${WHISPER_PORT:-8080}:8080"
