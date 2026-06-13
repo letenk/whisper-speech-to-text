@@ -27,5 +27,4 @@ services:
 
 networks:
   whisper-network:
-    external: true
     name: whisper-server-network
