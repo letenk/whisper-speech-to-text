@@ -16,9 +16,16 @@ services:
       WHISPER_PORT: 8178
       WHISPER_LANGUAGE: en       # en | id | auto
       WHISPER_THREADS: 4         # adjust to the number of cores of the M910q
+    networks:
+      - whisper-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8178/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 60s          # give time to download the model the first time
+
+networks:
+  whisper-network:
+    external: true
+    name: whisper-server-network
