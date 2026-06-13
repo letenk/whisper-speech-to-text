@@ -11,7 +11,12 @@ THREADS="${WHISPER_THREADS:-4}"
 # Download the model if it does not exist yet
 if [ ! -f "$MODEL_PATH" ]; then
     echo "Model $MODEL_NAME not found, downloading..."
-    ./models/download-ggml-model.sh "$MODEL_NAME"
+    mkdir -p ./models
+    BASE_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
+    curl -L --progress-bar \
+        "$BASE_URL/ggml-${MODEL_NAME}.bin" \
+        -o "$MODEL_PATH"
+    echo "Download complete: $MODEL_PATH"   
 else
     echo "Model $MODEL_NAME already exists, skipping download."
 fi

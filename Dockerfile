@@ -38,10 +38,6 @@ WORKDIR /app
 # Copy binary from stage builder
 COPY --from=builder /app/build/bin/whisper-server ./whisper-server
 
-# Copy script download model
-COPY --from=builder /app/models/download-ggml-model.sh ./models/download-ggml-model.sh
-RUN chmod +x ./models/download-ggml-model.sh
-
 # Copy entrypoint script
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
