@@ -1,138 +1,107 @@
-# Whisper.cpp Server for Speech to Text
+# Whisper Server — Docker Setup
 
-Self-hosted Speech-to-Text (STT) server using [ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp) official Docker image.
+Self-hosted speech-to-text server powered by whisper.cpp with FFmpeg support for automatic audio format conversion.
 
-## Architecture
+## File Structure
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Client     │────→│  whisper    │────→│  whisper.cpp│
-│  Backend    │     │  -network   │     │  Server     │
-└─────────────┘     └─────────────┘     └─────────────┘
-       │                                           │
-       └───────────────────────────────────────────┘
-                    (HTTP API: /inference)
+whisper/
+├── Dockerfile
+├── docker-compose.yml
+├── entrypoint.sh
+├── models/          ← auto-created, stores .bin model files
+└── README.md
 ```
 
-- **Network**: `whisper-network` (isolated Docker bridge network)
-- **Container**: `whisper-speech-to-text`
-- **Port**: 8080 (configurable via `.env`)
-- **Model**: `small.en` (English-optimized, ~466MB)
+## Prerequisites
 
-## Why Separate Network?
-
-- **Isolation**: Whisper server is independent from backend lifecycle
-- **Reusability**: Other services can connect to `whisper-network`
-- **Scalability**: Can run whisper on a different machine and join the network overlay
-- **Portability**: Whisper container can be moved/restarted without affecting backend
-
-## Quick Start
-
-### 1. Download Model
+Create the shared Docker network before running for the first time:
 
 ```bash
-make download-model
+docker network create whisper-server-network
 ```
 
-This downloads `ggml-small.en.bin` (~466MB) to `./models/`.
+This only needs to be done once. Any container that joins `whisper-server-network` can communicate with the whisper server using its container name as the hostname.
 
-### 2. Start Server
+## Usage
+
+### 1. Build & Start
 
 ```bash
-make up
+docker compose up -d --build
 ```
 
-Server will be available at `http://localhost:8080`.
+On first run, the entrypoint script will automatically download the configured model. The model is saved to `./models/` on the host so it is not re-downloaded on subsequent restarts.
 
-### 3. Test
+### 2. Check Status
 
 ```bash
-make test
+# Check container is running
+docker compose ps
+
+# Follow logs (including model download progress)
+docker compose logs -f
+
+# Health check
+curl http://localhost:8178/health
+# {"status":"ok"}
 ```
 
-Or manually:
+### 3. Test Transcription
+
 ```bash
-curl -X POST http://localhost:8080/inference \
-  -F "file=@test-audio.wav" \
-  -F "response_format=json"
+curl http://localhost:8178/inference \
+  -F file=@audio.m4a \
+  -F response_format=json
 ```
 
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `make download-model` | Download whisper model |
-| `make up` | Start container |
-| `make down` | Stop container |
-| `make logs` | View logs |
-| `make status` | Check container status |
-| `make test` | Test server health |
+Supported audio formats: `.wav`, `.mp3`, `.m4a`, `.webm`, `.ogg`, `.flac`
+All formats are automatically converted via FFmpeg before inference.
 
 ## Configuration
 
-Edit `.env`:
-```bash
-WHISPER_PORT=8080
-```
+Edit the `environment` section in `docker-compose.yml`:
 
-## Backend Connection
+| Variable | Default | Options |
+|----------|---------|---------|
+| `WHISPER_MODEL` | `small` | `tiny`, `base`, `small`, `medium`, `large` |
+| `WHISPER_LANGUAGE` | `en` | `en`, `id`, `auto` |
+| `WHISPER_THREADS` | `4` | Adjust to match your CPU core count |
+| `WHISPER_PORT` | `8178` | Any available port |
 
-Backend connects via Docker network (no exposed port needed):
-```bash
-# From backend container
-curl http://whisper-speech-to-text:8080/inference
-```
+## Connecting from Another Container
 
-Backend `.env`:
-```bash
-WHISPER_ENDPOINT=http://whisper-speech-to-text:8080
-WHISPER_MODEL=small.en
-```
+Add the same network to your other service's `docker-compose.yml`:
 
-## Hardware Requirements
-
-| Spec | Minimum | Recommended |
-|------|---------|-------------|
-| CPU | 2 cores | 4+ cores |
-| RAM | 2GB | 4GB+ |
-| Disk | 1GB | 5GB |
-| GPU | Optional | Not required for small.en |
-
-## Model Options
-
-| Model | Size | Accuracy | Speed | RAM |
-|-------|------|----------|-------|-----|
-| `tiny.en` | 75MB | ⭐⭐ | ⚡ Fast | ~273MB |
-| `base.en` | 142MB | ⭐⭐⭐ | ⚡ Fast | ~388MB |
-| `small.en` | 466MB | ⭐⭐⭐⭐ | 🐢 Medium | ~852MB |
-| `medium.en` | 1.5GB | ⭐⭐⭐⭐⭐ | 🐌 Slow | ~2.1GB |
-
-Change model in `docker-compose.yml`:
 ```yaml
-command: >
-  whisper-speech-to-text
-  -m /models/ggml-base.en.bin  # <-- change here
+networks:
+  whisper-network:
+    external: true
+    name: whisper-server-network
 ```
 
-## Troubleshooting
+Then use the container name as the hostname in your service configuration:
 
-### Container won't start
+```env
+WHISPER_SERVER_URL=http://whisper-server:8178
+```
+
+## Changing the Model
+
+Update `WHISPER_MODEL` in `docker-compose.yml`, then restart:
+
 ```bash
-make logs
-# Check if model file exists
-ls -la models/
+docker compose up -d
 ```
 
-### Out of memory
-- Use smaller model: `ggml-base.en.bin` or `ggml-tiny.en.bin`
-- Reduce container memory limit
+The new model will be downloaded automatically on startup.
 
-## Resources
+## Model Size Reference
 
-- [whisper.cpp GitHub](https://github.com/ggml-org/whisper.cpp)
-- [whisper.cpp Docker](https://github.com/ggml-org/whisper.cpp/pkgs/container/whisper.cpp)
-- [OpenAI Whisper](https://github.com/openai/whisper)
-
-## License
-
-MIT - whisper.cpp is open source under MIT license.
+| Model | Disk | RAM | Speed |
+|-------|------|-----|-------|
+| tiny | 75 MB | ~273 MB | Fastest |
+| base | 142 MB | ~388 MB | Fast |
+| small | 466 MB | ~852 MB | Balanced |
+| medium | 1.5 GB | ~2.1 GB | Accurate |
+| large | 2.9 GB | ~3.9 GB | Most accurate |
