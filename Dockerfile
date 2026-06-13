@@ -18,7 +18,7 @@ WORKDIR /app
 RUN git clone --depth=1 https://github.com/ggml-org/whisper.cpp .
 
 # Build whisper server (Release, use all available cores)
-RUN cmake -B build -DWHISPER_BUILD_SERVER=ON \
+RUN cmake -B build -DWHISPER_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF \
     && cmake --build build --config Release -j$(nproc) --target whisper-server
 
 # ─────────────────────────────────────────
